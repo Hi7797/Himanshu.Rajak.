@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ingredient Price Calculator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg,#ff9a9e,#fad0c4);
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 1000px;
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 20px;
+    }
+    .card {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(15px);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    h1 { margin: 0 0 16px; font-size: 22px; }
+    .table { display: flex; flex-direction: column; gap: 10px; }
+    .head { font-weight: bold; display: grid; grid-template-columns: 2fr 2fr 2fr 1fr auto; gap: 10px; }
+    .row {
+      display: grid;
+      grid-template-columns: 2fr 2fr 2fr 1fr auto;
+      gap: 10px;
+      align-items: center;
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .cell label { display: none; font-size: 12px; margin-bottom: 2px; }
+    .cell input, .cell select {
+      width: 100%; padding: 6px;
+      border: none; border-radius: 6px;
+      background: rgba(255,255,255,0.6);
+      font-size: 14px;
+    }
+    .btn {
+      background: linear-gradient(135deg,#667eea,#764ba2);
+      color: white; border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: transform 0.2s;
+    }
+    .btn:hover { transform: scale(1.05); }
+    .removeBtn {
+      background: rgba(255,0,0,0.7);
+      border: none;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .totalCell { font-weight: bold; text-align: center; }
+    .controls { margin-top: 10px; display: flex; gap: 10px; }
+    .summary h2 { margin-top: 0; }
+    .bigTotal { font-size: 28px; margin: 10px 0; }
+    .val { color: #ffeb3b; }
+    /* Mobile */
+    @media (max-width: 700px) {
+      .wrap { grid-template-columns: 1fr; }
+      .head { display: none; } /* Hide table header */
+      .row { grid-template-columns: 1fr; }
+      .cell { display: flex; flex-direction: column; }
+      .cell label { display: block; } /* Show labels on mobile */
+      .controls { flex-direction: column; }
+      .btn { width: 100%; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Ingredient Price Calculator</h1>
+      <div class="table">
+        <div class="head">
+          <div>Item</div><div>Rate</div><div>Quantity</div><div>Total</div><div></div>
+        </div>
+        <div id="rows"></div>
+      </div>
+      <div class="controls">
+        <button class="btn" onclick="addRow()">+ Add Ingredient</button>
+        <button class="btn" onclick="resetCalc()">Reset</button>
+      </div>
+    </div>
+    <div class="card summary">
+      <h2>Summary</h2>
+      <div class="bigTotal">Grand Total: <span class="val">₹0</span></div>
+    </div>
+  </div>
+
+  <template id="rowTemplate">
+    <div class="row">
+      <div class="cell"><label>Item</label><input type="text" placeholder="Name"></div>
+      <div class="cell">
+        <label>Rate</label>
+        <input type="number" step="any" placeholder="Rate">
+        <select>
+          <option value="kg">per kg</option>
+          <option value="l">per L</option>
+          <option value="dozen">per dozen</option>
+        </select>
+      </div>
+      <div class="cell">
+        <label>Quantity</label>
+        <input type="number" step="any" placeholder="Qty">
+        <select>
+          <option value="g">g</option>
+          <option value="ml">ml</option>
+          <option value="dozen">dozen</option>
+        </select>
+      </div>
+      <div class="cell"><label>Total</label><div class="totalCell">₹0</div></div>
+      <button class="removeBtn">✕</button>
+    </div>
+  </template>
+
+  <script>
+    const rows = document.getElementById("rows");
+    const template = document.getElementById("rowTemplate");
+    const totalEl = document.querySelector(".bigTotal .val");
+
+    const factors = { kg:1000, g:1, l:1000, ml:1, dozen:12, piece:1 };
+    const cat = { kg:'m', g:'m', l:'v', ml:'v', dozen:'c', piece:'c' };
+
+    function addRow() {
+      const clone = template.content.cloneNode(true);
+      const row = clone.querySelector(".row");
+      row.querySelectorAll("input,select").forEach(el => {
+        el.addEventListener("input", ()=> update(row));
+      });
+      row.querySelector(".removeBtn").addEventListener("click", ()=>{
+        row.remove(); updateTotal();
+      });
+      rows.appendChild(clone);
+    }
+
+    function update(row){
+      const rate = parseFloat(row.children[1].querySelector("input").value)||0;
+      const rateU = row.children[1].querySelector("select").value;
+      const qty = parseFloat(row.children[2].querySelector("input").value)||0;
+      const qtyU = row.children[2].querySelector("select").value;
+      let total=0;
+      if(rate>0 && qty>0 && cat[rateU]===cat[qtyU]){
+        total = (rate / factors[rateU]) * (qty*factors[qtyU]);
+      }
+      row.querySelector(".totalCell").textContent="₹"+total.toFixed(2);
+      updateTotal();
+    }
+
+    function updateTotal(){
+      let sum=0;
+      rows.querySelectorAll(".row").forEach(r=>{
+        let val=parseFloat(r.querySelector(".totalCell").textContent.replace("₹",""))||0;
+        sum+=val;
+      });
+      totalEl.textContent="₹"+sum.toFixed(2);
+    }
+
+    function resetCalc(){
+      rows.innerHTML=""; addRow(); updateTotal();
+    }
+
+    addRow();
+  </script>
+<meta charset="UTF-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>Watermark Example</title> 
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-color: #0b1220; /* dark background */
+      color: #fff;
+    }
+
+    .content {
+      flex: 1; /* pushes footer to bottom */
+      padding: 40px;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 15px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6); /* faint watermark style */
+      background: #111a2d; /* footer background */
+      user-select: none;
+    }
+  </style> <!-- Watermark/Footer --> 
+  <div class="footer">
+    © 2025 @Himanshu Rajak. All rights reserved. 
+  </div> 
+ </body>
+</html>
